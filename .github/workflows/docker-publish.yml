@@ -52,5 +52,6 @@ jobs:
             NEXTJS_VERSION=${{ matrix.nextjs_version }}
           tags: |
             ghcr.io/mark7625/custom-pterodactyl-eggs:${{ matrix.tag }}
+            ghcr.io/mark7625/pterodactyl-nextjs-egg:${{ matrix.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

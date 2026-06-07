@@ -161,7 +161,10 @@ Images are published to GHCR when you push to the `nextjs` branch (see `.github/
 
 ```
 ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest
+ghcr.io/mark7625/pterodactyl-nextjs-egg:16-latest   # alias (same image)
 ```
+
+Both names point to the same image. Use **`16-latest`** for Next.js 16.
 
 ### If you see `error from registry: denied`
 

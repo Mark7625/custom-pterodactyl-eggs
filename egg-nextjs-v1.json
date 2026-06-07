@@ -12,7 +12,10 @@
     "docker_images": {
         "ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest",
         "ghcr.io/mark7625/custom-pterodactyl-eggs:22-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs:22-latest",
-        "ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest"
+        "ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest",
+        "ghcr.io/mark7625/pterodactyl-nextjs-egg:16-latest": "ghcr.io/mark7625/pterodactyl-nextjs-egg:16-latest",
+        "ghcr.io/mark7625/pterodactyl-nextjs-egg:22-latest": "ghcr.io/mark7625/pterodactyl-nextjs-egg:22-latest",
+        "ghcr.io/mark7625/pterodactyl-nextjs-egg:20-latest": "ghcr.io/mark7625/pterodactyl-nextjs-egg:20-latest"
     },
     "file_denylist": [],
     "startup": "./start-modules.sh",
