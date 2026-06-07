@@ -1,21 +1,13 @@
 # Nginx Module
 
-Starts Nginx in the foreground and routes traffic to your Next.js server.
-
-## Modes
-
-| Mode | Nginx behaviour |
-|------|-----------------|
-| `node` (default) | Reverse proxy to Next.js on `APP_PORT` (SSR, API routes, middleware) |
-| `static` | Serves static export files from `/home/container/public` |
-
-Mode is set by the Next.js module via `/home/container/tmp/serve_mode`.
+Starts Nginx and routes traffic to your Next.js app on `SITE_PORT`.
 
 ## Configuration
 
 | Env Variable | Default | Description |
 |--------------|---------|-------------|
+| `SITE_PORT` | from nginx config | Port Nginx listens on — set to your Pterodactyl allocation |
+| `APP_PORT` | `3000` | Internal Next.js port (fixed, not user-facing) |
 | `NGINX_CONF` | `/home/container/nginx/nginx.conf` | Nginx config path |
-| `NGINX_PREFIX` | `/home/container` | Nginx prefix (`-p`) |
-| `APP_PORT` | `3000` | Next.js port to proxy to (node mode) |
-| `SERVE_ROOT` | `/home/container/public` | Static files root (static mode) |
+
+Traffic: `SITE_PORT` (Nginx) → `APP_PORT` (Next.js)

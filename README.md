@@ -29,7 +29,7 @@ A Pterodactyl egg for hosting **Next.js** applications. Pulls your site from Git
 - 🌐 **Cloudflare Tunnel**: Secure remote access without port forwarding
 - 🔐 **Certbot SSL**: DNS-01 challenge support
 - 🖥️ **Multi-arch**: AMD64 & ARM64
-- 🎯 **Node.js**: 20 LTS and 22 LTS
+- 🎯 **Next.js 16** with Node.js 20 LTS and 22 LTS
 
 <br>
 
@@ -38,7 +38,7 @@ A Pterodactyl egg for hosting **Next.js** applications. Pulls your site from Git
 1. Download `egg-nextjs-v1.json`
 2. In Pterodactyl, go to **Nests** → **Import Egg**
 3. Create a server with the **Pterodactyl Next.js Egg**
-4. Select a Docker image (Node.js 22 or 20)
+4. Select a Docker image (`16-latest` for Next.js 16, or Node 22 / 20)
 5. Configure your website repo variables (below)
 
 <br>
@@ -54,7 +54,7 @@ On each server start:
 
 <br>
 
-## Website Repository
+## Website Repository (Site 1)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -66,15 +66,27 @@ On each server start:
 
 <br>
 
+## Site Port
+
+| Variable | Description |
+|----------|-------------|
+| `SITE_PORT` | Port your site runs on — set to your **Pterodactyl allocation port** (e.g. `25565`) |
+
+Nginx listens on `SITE_PORT` and proxies to Next.js internally. For Cloudflare Tunnel, point to `localhost:<SITE_PORT>`.
+
+One site per server — create separate Pterodactyl servers for additional sites, each with its own port.
+
+<br>
+
 ## Next.js Commands
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `NEXTJS_VERSION` | `16` | Target Next.js version (ensure `next` is in your `package.json`) |
 | `NEXTJS_STATUS` | `1` | Enable build & start on restart |
 | `INSTALL_COMMAND` | `npm install` | Install dependencies |
 | `BUILD_COMMAND` | `npx next build` | Production build |
 | `START_COMMAND` | `npx next start` | Run Next.js server |
-| `APP_PORT` | `3000` | Internal port Next.js listens on |
 
 <br>
 
@@ -139,10 +151,41 @@ Enable with `CRON_STATUS=1`, edit `/home/container/crontab`:
 
 ## Docker Images
 
-```bash
-docker build --build-arg NODE_VERSION=22 -t ghcr.io/mark7625/pterodactyl-nextjs-egg:22-latest .
-docker build --build-arg NODE_VERSION=20 -t ghcr.io/mark7625/pterodactyl-nextjs-egg:20-latest .
+Images are published to GHCR when you push to the `nextjs` branch (see `.github/workflows/docker-publish.yml`).
+
+| Tag | Node.js | Use for |
+|-----|---------|---------|
+| `16-latest` | 22 | **Recommended** — Next.js 16 |
+| `22-latest` | 22 | Node 22 runtime |
+| `20-latest` | 20 | Node 20 LTS |
+
 ```
+ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest
+```
+
+### If you see `error from registry: denied`
+
+Wings cannot start until the image exists on a registry it can reach.
+
+1. **Publish via GitHub Actions** — push this repo to `Mark7625/custom-pterodactyl-eggs` on branch `nextjs`, then open **Actions** → **Publish Docker images** and confirm the run succeeded.
+2. **Make the package public** — on GitHub go to your profile → **Packages** → `custom-pterodactyl-eggs` → **Package settings** → **Change visibility** → Public. (Private packages require a GHCR token on each Wings node.)
+3. **Re-import the egg** — use `egg-nextjs-v1.json` so Docker image names match GHCR.
+4. **Manual publish** (if CI is not set up yet):
+
+```bash
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u Mark7625 --password-stdin
+
+docker build --build-arg NODE_VERSION=22 --build-arg NEXTJS_VERSION=16 -t ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest .
+docker push ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest
+
+docker build --build-arg NODE_VERSION=22 -t ghcr.io/mark7625/custom-pterodactyl-eggs:22-latest .
+docker push ghcr.io/mark7625/custom-pterodactyl-eggs:22-latest
+
+docker build --build-arg NODE_VERSION=20 -t ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest .
+docker push ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest
+```
+
+After images are public, in the panel set the server Docker image to **`16-latest`** (not `22-latest` unless you specifically want that tag).
 
 <br>
 

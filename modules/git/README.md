@@ -14,3 +14,5 @@ Pulls your website source from Git on every server restart (clone on first run, 
 | `WEBSITE_DIR` | `/home/container/www` | Where the site source is stored |
 
 Legacy variables `GIT_ADDRESS`, `GIT_BRANCH`, `ACCESS_TOKEN`, and `USERNAME` are still supported as fallbacks.
+
+Set `SITE_PORT` to your Pterodactyl allocation port (one site per server).

@@ -13,6 +13,7 @@ header() {
 }
 
 NEXTJS_STATUS="${NEXTJS_STATUS:-${REACT_STATUS:-true}}"
+NEXTJS_VERSION="${NEXTJS_VERSION:-16}"
 APP_DIR="${APP_DIR:-/home/container/www}"
 INSTALL_COMMAND="${INSTALL_COMMAND:-npm install}"
 BUILD_COMMAND="${BUILD_COMMAND:-npx next build}"
@@ -46,7 +47,7 @@ fi
 mkdir -p /home/container/logs /home/container/tmp
 cd "$APP_DIR"
 
-echo -e "${WHITE}[Next.js] Node $(node -v) | npm $(npm -v)${NC}"
+echo -e "${WHITE}[Next.js] Target v${NEXTJS_VERSION} | Node $(node -v) | npm $(npm -v)${NC}"
 echo -e "${WHITE}[Next.js] Installing dependencies: ${INSTALL_COMMAND}${NC}"
 eval "$INSTALL_COMMAND"
 
@@ -56,7 +57,6 @@ eval "$BUILD_COMMAND"
 if [[ "$SERVE_MODE" == "static" ]]; then
   if [[ ! -d "${APP_DIR}/${BUILD_OUTPUT_DIR}" ]]; then
     echo -e "${RED}[Next.js] Static output not found: ${BUILD_OUTPUT_DIR}${NC}"
-    echo -e "${YELLOW}[Next.js] For static export set output: 'export' in next.config and BUILD_OUTPUT_DIR=out${NC}"
     exit 1
   fi
   ln -sfn "${APP_DIR}/${BUILD_OUTPUT_DIR}" /home/container/public
@@ -66,7 +66,6 @@ if [[ "$SERVE_MODE" == "static" ]]; then
 fi
 
 if [[ -z "$START_COMMAND" || "$START_COMMAND" == "none" ]]; then
-  echo -e "${YELLOW}[Next.js] No start command; falling back to static mode.${NC}"
   if [[ -d "${APP_DIR}/${BUILD_OUTPUT_DIR}" ]]; then
     ln -sfn "${APP_DIR}/${BUILD_OUTPUT_DIR}" /home/container/public
     echo "static" > "$SERVE_MODE_FILE"
@@ -78,7 +77,7 @@ fi
 
 echo "node" > "$SERVE_MODE_FILE"
 echo -e "${WHITE}[Next.js] Starting server: ${START_COMMAND}${NC}"
-echo -e "${WHITE}[Next.js] Listening on 127.0.0.1:${APP_PORT}${NC}"
+echo -e "${WHITE}[Next.js] Internal port: ${APP_PORT}${NC}"
 
 export PORT="$APP_PORT"
 export HOSTNAME="127.0.0.1"

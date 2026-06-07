@@ -14,24 +14,12 @@ header() {
 
 GIT_STATUS="${GIT_STATUS:-true}"
 WEBSITE_DIR="${WEBSITE_DIR:-/home/container/www}"
-
 WEBSITE_REPO="${WEBSITE_REPO:-${GIT_ADDRESS:-}}"
 WEBSITE_BRANCH="${WEBSITE_BRANCH:-${GIT_BRANCH:-}}"
 WEBSITE_TOKEN="${WEBSITE_TOKEN:-${ACCESS_TOKEN:-}}"
-WEBSITE_USERNAME="${WEBSITE_USERNAME:-${USERNAME:-}}"
+WEBSITE_USERNAME="${WEBSITE_USERNAME:-${USERNAME:-x-access-token}}"
 
 enabled() { [[ "$1" =~ ^(true|1)$ ]]; }
-
-if ! enabled "$GIT_STATUS"; then
-  exit 0
-fi
-
-if [[ -z "$WEBSITE_REPO" ]]; then
-  echo -e "${YELLOW}[Website] WEBSITE_REPO is not set; skipping deploy.${NC}"
-  exit 0
-fi
-
-command -v git >/dev/null 2>&1 || { echo -e "${RED}[Website] Git not installed; skipping.${NC}"; exit 0; }
 
 build_auth_url() {
   local repo_url="$1"
@@ -47,13 +35,22 @@ build_auth_url() {
     return 0
   fi
 
-  local domain repo_path username
+  local domain repo_path
   domain=$(echo "$clean_url" | sed -E 's|https://([^/]+)/.*|\1|')
   repo_path=$(echo "$clean_url" | sed -E 's|https://[^/]+/(.*)|\1|')
-  username="${WEBSITE_USERNAME:-x-access-token}"
-
-  echo "https://${username}:${WEBSITE_TOKEN}@${domain}/${repo_path}"
+  echo "https://${WEBSITE_USERNAME}:${WEBSITE_TOKEN}@${domain}/${repo_path}"
 }
+
+if ! enabled "$GIT_STATUS"; then
+  exit 0
+fi
+
+if [[ -z "$WEBSITE_REPO" ]]; then
+  echo -e "${YELLOW}[Website] WEBSITE_REPO is not set; skipping deploy.${NC}"
+  exit 0
+fi
+
+command -v git >/dev/null 2>&1 || { echo -e "${RED}[Website] Git not installed; skipping.${NC}"; exit 0; }
 
 AUTH_URL=$(build_auth_url "$WEBSITE_REPO")
 
@@ -72,11 +69,7 @@ if [[ ! -d "${WEBSITE_DIR}/.git" ]]; then
 fi
 
 cd "$WEBSITE_DIR"
-
-if [[ -n "$WEBSITE_TOKEN" ]]; then
-  git remote set-url origin "$AUTH_URL"
-  echo -e "${GREEN}[Website] Remote URL updated with credentials.${NC}"
-fi
+git remote set-url origin "$AUTH_URL"
 
 if [[ -n "$WEBSITE_BRANCH" ]]; then
   echo -e "${WHITE}[Website] Fetching branch '${WEBSITE_BRANCH}'...${NC}"

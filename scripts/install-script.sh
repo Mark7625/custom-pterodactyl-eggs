@@ -36,20 +36,7 @@ rm -rf /mnt/server/gtemp
 if [ -z "${WEBSITE_REPO}" ]; then
     echo "[Website] Info: WEBSITE_REPO is not set."
     echo "[Website] Website deploy is disabled during install."
-    cat > /mnt/server/www/index.html <<'HTML'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Next.js Egg</title>
-</head>
-<body>
-  <h1>Pterodactyl Next.js Egg</h1>
-  <p>Set <code>WEBSITE_REPO</code> to your Next.js repository and restart the server.</p>
-</body>
-</html>
-HTML
+    echo '<!DOCTYPE html><html><head><title>Next.js Egg</title></head><body><h1>Pterodactyl Next.js Egg</h1><p>Set WEBSITE_REPO to your Next.js repository and restart.</p></body></html>' > /mnt/server/www/index.html
     ln -sfn /mnt/server/www /mnt/server/public
 else
     if [[ ${WEBSITE_REPO} != *.git ]]; then

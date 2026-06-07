@@ -1,8 +1,9 @@
 FROM debian:bookworm-slim
 
-LABEL author="Mark7625" maintainer="custom-pterodactyl-eggs" description="Pterodactyl Next.js Egg"
+LABEL author="Mark7625" maintainer="custom-pterodactyl-eggs" description="Pterodactyl Next.js Egg (Next.js 16)"
 
 ARG NODE_VERSION=22
+ARG NEXTJS_VERSION=16
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -36,6 +37,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y nodejs \
     && command -v node >/dev/null 2>&1 || { echo "ERROR: Node.js installation failed."; exit 1; } \
     && echo "Node.js installed successfully: $(node -v)" \
+    && echo "Next.js ${NEXTJS_VERSION} runtime (use next from your project package.json)" > /etc/pterodactyl-nextjs-version \
     && rm -rf /var/lib/apt/lists/*
 
 # Create user and set environment variables
