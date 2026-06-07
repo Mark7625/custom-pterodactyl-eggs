@@ -16,7 +16,7 @@ Downloads a JAR from **GitHub Releases**.
 
 | Variable | Default |
 |----------|---------|
-| `JAR_UPDATE_REPO` | — |
+| `JAR_UPDATE_REPO` | `owner/repo` — not a full `.git` URL (auto-normalized if pasted) |
 | `SERVER_JAR` | `app.jar` |
 | `JAR_UPDATE_MODE` | `Automatic` |
 | `GITHUB_TOKEN` | PAT — recommended on Pterodactyl (avoids API rate limits) |

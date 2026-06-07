@@ -71,7 +71,7 @@
         },
         {
             "name": "GitHub Repo",
-            "description": "owner/repo for releases (e.g. Mark7625/OpenRune-WebServer)",
+            "description": "owner/repo or GitHub URL (e.g. Mark7625/OpenRune-WebServer)",
             "env_variable": "JAR_UPDATE_REPO",
             "default_value": "",
             "user_viewable": true,

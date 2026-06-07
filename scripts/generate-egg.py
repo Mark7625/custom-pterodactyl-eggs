@@ -55,7 +55,7 @@ egg = {
         var("Force Auto-Update", "Apply egg script updates without confirmation", "AUTOUPDATE_FORCE", "1", "required|boolean"),
         var("Enable JAR Update", "Download JAR from GitHub Releases on startup", "JAR_UPDATE_STATUS", "1", "required|boolean"),
         var("JAR Update Mode", "Automatic, Notification, or Disabled", "JAR_UPDATE_MODE", "Automatic", "required|string"),
-        var("GitHub Repo", "owner/repo for releases (e.g. Mark7625/OpenRune-WebServer)", "JAR_UPDATE_REPO", "", "nullable|string"),
+        var("GitHub Repo", "owner/repo or GitHub URL (e.g. Mark7625/OpenRune-WebServer)", "JAR_UPDATE_REPO", "", "nullable|string"),
         var("Release Filter", "Match text in release tag or title for latest (e.g. diff, production). Blank = newest release", "JAR_RELEASE_FILTER", "", "nullable|string"),
         var("Release Tag", "Pin exact tag (e.g. v1.0.0 or 2026-06-07-diff-abc1234). Overrides filter", "JAR_UPDATE_TAG", "", "nullable|string"),
         var("JAR Filename", "Release asset filename (e.g. openrune-server.jar)", "SERVER_JAR", "app.jar", "required|string"),

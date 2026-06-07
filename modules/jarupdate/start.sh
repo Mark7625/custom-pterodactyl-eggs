@@ -16,9 +16,24 @@ sanitize_var() {
   printf '%s' "$1" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 }
 
+normalize_repo() {
+  local raw
+  raw="$(sanitize_var "$1")"
+  raw="${raw%/}"
+  raw="${raw%.git}"
+  case "$raw" in
+    git@github.com:*) raw="${raw#git@github.com:}" ;;
+    https://github.com/*) raw="${raw#https://github.com/}" ;;
+    http://github.com/*) raw="${raw#http://github.com/}" ;;
+    github.com/*) raw="${raw#github.com/}" ;;
+  esac
+  printf '%s' "$raw"
+}
+
 JAR_UPDATE_STATUS="${JAR_UPDATE_STATUS:-1}"
 JAR_UPDATE_MODE="${JAR_UPDATE_MODE:-Automatic}"
-JAR_UPDATE_REPO="$(sanitize_var "${JAR_UPDATE_REPO:-}")"
+JAR_UPDATE_REPO_RAW="$(sanitize_var "${JAR_UPDATE_REPO:-}")"
+JAR_UPDATE_REPO="$(normalize_repo "$JAR_UPDATE_REPO_RAW")"
 JAR_UPDATE_TAG="$(sanitize_var "${JAR_UPDATE_TAG:-}")"
 JAR_RELEASE_FILTER="$(sanitize_var "${JAR_RELEASE_FILTER:-}")"
 JAR_UPDATE_INCLUDE_PRERELEASE="${JAR_UPDATE_INCLUDE_PRERELEASE:-0}"
@@ -223,6 +238,15 @@ if ! command -v curl >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; th
 fi
 
 header "Checking GitHub Releases"
+
+if [[ -n "$JAR_UPDATE_REPO_RAW" && "$JAR_UPDATE_REPO_RAW" != "$JAR_UPDATE_REPO" ]]; then
+  echo -e "${CYAN}[JarUpdate] Normalized repo: ${JAR_UPDATE_REPO_RAW} -> ${JAR_UPDATE_REPO}${NC}"
+fi
+if [[ -n "$JAR_UPDATE_REPO" && ! "$JAR_UPDATE_REPO" =~ ^[^/]+/[^/]+$ ]]; then
+  echo -e "${RED}[JarUpdate] Invalid JAR_UPDATE_REPO '${JAR_UPDATE_REPO}'. Use owner/repo (e.g. Mark7625/OpenRune-WebServer).${NC}"
+  [[ -f "$JAR_PATH" ]] || exit 1
+  exit 0
+fi
 
 remote_tag=""
 download_url=""
