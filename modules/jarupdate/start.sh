@@ -183,7 +183,10 @@ for r in releases:
 }
 
 get_local_tag() {
-  [[ -f "$STATE_FILE" && -s "$STATE_FILE" ]] && tr -d '\n\r' <"$STATE_FILE" | head -1
+  if [[ -f "$STATE_FILE" && -s "$STATE_FILE" ]]; then
+    tr -d '\n\r' <"$STATE_FILE" | head -1
+  fi
+  return 0
 }
 
 is_first_load() {
@@ -311,7 +314,7 @@ if [[ -z "$remote_tag" || -z "$download_url" ]]; then
   exit 0
 fi
 
-local_tag=$(get_local_tag)
+local_tag="$(get_local_tag)"
 echo -e "${CYAN}[JarUpdate] Repo: ${JAR_UPDATE_REPO}${NC}"
 echo -e "${CYAN}[JarUpdate] Asset: ${SERVER_JAR}${NC}"
 [[ -n "$JAR_RELEASE_FILTER" && -z "$JAR_UPDATE_TAG" ]] && echo -e "${CYAN}[JarUpdate] Filter: ${JAR_RELEASE_FILTER}${NC}"
