@@ -35,11 +35,16 @@ A Pterodactyl egg for hosting **Next.js** applications. Pulls your site from Git
 
 ## Installation
 
-1. Download `egg-nextjs-v1.json`
+1. Download `egg-nextjs-v1.json` from the **`nextjs`** branch
 2. In Pterodactyl, go to **Nests** → **Import Egg**
 3. Create a server with the **Pterodactyl Next.js Egg**
-4. Select a Docker image (`16-latest` for Next.js 16, or Node 22 / 20)
+4. **Docker image (required)** — pick **`16-latest`** (built from the `nextjs` branch):
+   ```
+   ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:16-latest
+   ```
 5. Configure your website repo variables (below)
+
+**Already created a server?** Open **Startup** → change **Docker Image** to `ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:16-latest` → Save → Start.
 
 <br>
 
@@ -160,32 +165,33 @@ Images are published to GHCR when you push to the `nextjs` branch (see `.github/
 | `20-latest` | 20 | Node 20 LTS |
 
 ```
-ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest
-ghcr.io/mark7625/pterodactyl-nextjs-egg:16-latest   # alias (same image)
+ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:16-latest   ← use this in Pterodactyl
+ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:22-latest
+ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:20-latest
 ```
 
-Both names point to the same image. Use **`16-latest`** for Next.js 16.
+The `/nextjs` path matches the GitHub branch these images are built from (not `main`).
 
 ### If you see `error from registry: denied`
 
 Wings cannot start until the image exists on a registry it can reach.
 
 1. **Publish via GitHub Actions** — push this repo to `Mark7625/custom-pterodactyl-eggs` on branch `nextjs`, then open **Actions** → **Publish Docker images** and confirm the run succeeded.
-2. **Make the package public** — on GitHub go to your profile → **Packages** → `custom-pterodactyl-eggs` → **Package settings** → **Change visibility** → Public. (Private packages require a GHCR token on each Wings node.)
+2. **Make the package public** — on GitHub go to your profile → **Packages** → `custom-pterodactyl-eggs/nextjs` → **Package settings** → **Change visibility** → Public. (Private packages require a GHCR token on each Wings node.)
 3. **Re-import the egg** — use `egg-nextjs-v1.json` so Docker image names match GHCR.
 4. **Manual publish** (if CI is not set up yet):
 
 ```bash
 echo YOUR_GITHUB_PAT | docker login ghcr.io -u Mark7625 --password-stdin
 
-docker build --build-arg NODE_VERSION=22 --build-arg NEXTJS_VERSION=16 -t ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest .
-docker push ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest
+docker build --build-arg NODE_VERSION=22 --build-arg NEXTJS_VERSION=16 -t ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:16-latest .
+docker push ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:16-latest
 
-docker build --build-arg NODE_VERSION=22 -t ghcr.io/mark7625/custom-pterodactyl-eggs:22-latest .
-docker push ghcr.io/mark7625/custom-pterodactyl-eggs:22-latest
+docker build --build-arg NODE_VERSION=22 -t ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:22-latest .
+docker push ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:22-latest
 
-docker build --build-arg NODE_VERSION=20 -t ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest .
-docker push ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest
+docker build --build-arg NODE_VERSION=20 -t ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:20-latest .
+docker push ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:20-latest
 ```
 
 After images are public, in the panel set the server Docker image to **`16-latest`** (not `22-latest` unless you specifically want that tag).

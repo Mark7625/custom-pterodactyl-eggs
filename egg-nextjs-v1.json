@@ -10,12 +10,9 @@
     "description": "Pterodactyl Next.js Egg\r\n\r\nOne Next.js site per server. Supports Next.js 16. Pulls from Git on restart, runs next build + next start, and proxies through Nginx on your chosen port.",
     "features": null,
     "docker_images": {
-        "ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs:16-latest",
-        "ghcr.io/mark7625/custom-pterodactyl-eggs:22-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs:22-latest",
-        "ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs:20-latest",
-        "ghcr.io/mark7625/pterodactyl-nextjs-egg:16-latest": "ghcr.io/mark7625/pterodactyl-nextjs-egg:16-latest",
-        "ghcr.io/mark7625/pterodactyl-nextjs-egg:22-latest": "ghcr.io/mark7625/pterodactyl-nextjs-egg:22-latest",
-        "ghcr.io/mark7625/pterodactyl-nextjs-egg:20-latest": "ghcr.io/mark7625/pterodactyl-nextjs-egg:20-latest"
+        "ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:16-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:16-latest",
+        "ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:22-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:22-latest",
+        "ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:20-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs/nextjs:20-latest"
     },
     "file_denylist": [],
     "startup": "./start-modules.sh",
@@ -65,7 +62,7 @@
         },
         {
             "name": "Node.js Version",
-            "description": "Node.js version matching your Docker image. Use 22 for Next.js 16.",
+            "description": "Node.js runtime in the Docker image. Use 22 with 16-latest or 22-latest image. Use 20 with 20-latest image.",
             "env_variable": "NODE_VERSION",
             "default_value": "22",
             "user_viewable": true,

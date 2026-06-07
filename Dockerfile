@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim
 
-LABEL author="Mark7625" maintainer="custom-pterodactyl-eggs" description="Pterodactyl Next.js Egg (Next.js 16)"
+LABEL author="Mark7625" maintainer="custom-pterodactyl-eggs/nextjs" description="Pterodactyl Next.js Egg (nextjs branch, Next.js 16)"
 
 ARG NODE_VERSION=22
 ARG NEXTJS_VERSION=16
