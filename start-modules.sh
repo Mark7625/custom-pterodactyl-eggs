@@ -3,9 +3,9 @@ sed -i 's/\r$//' "$0"
 find modules -type f -name "*.sh" -exec sed -i 's/\r$//' {} + 2>/dev/null || true
 
 set -euo pipefail
-trap 'echo -e "${RED}[Orchestrator] Error on line $LINENO${NC}"' ERR
 
-BLUE='\033[0;34m'; BOLD_BLUE='\033[1;34m'; NC='\033[0m'
+BLUE='\033[0;34m'; BOLD_BLUE='\033[1;34m'; RED='\033[0;31m'; NC='\033[0m'
+trap 'echo -e "${RED}[Orchestrator] Error on line $LINENO${NC}"' ERR
 
 header() {
   echo -e "\n${BLUE}───────────────────────────────────────────────${NC}"

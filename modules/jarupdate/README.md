@@ -19,6 +19,7 @@ Downloads a JAR from **GitHub Releases**.
 | `JAR_UPDATE_REPO` | — |
 | `SERVER_JAR` | `app.jar` |
 | `JAR_UPDATE_MODE` | `Automatic` |
-| `GITHUB_TOKEN` | optional PAT |
+| `GITHUB_TOKEN` | PAT — recommended on Pterodactyl (avoids API rate limits) |
+| `JAR_UPDATE_DEBUG` | `1` to log raw API response |
 
 State: `/home/container/.jarupdate_release`

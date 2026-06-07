@@ -23,7 +23,8 @@ ghcr.io/mark7625/custom-pterodactyl-eggs/ktor:11-latest
 | Image | `ktor:11-latest` |
 | `JAR_UPDATE_REPO` | `Mark7625/OpenRune-WebServer` |
 | `SERVER_JAR` | `openrune-server.jar` |
-| `JAR_RELEASE_FILTER` | `diff` (matches `2026-06-07-diff-...` releases) |
+| `JAR_RELEASE_FILTER` | `production` (matches `2026-06-07-production-...`) |
+| `GITHUB_TOKEN` | PAT recommended if API calls fail |
 | `JAR_UPDATE_TAG` | leave blank for latest `diff`, or `v1.0.0` to pin |
 | `APP_PORT_METHOD` | `cli` |
 | `APP_ARGS` | `-1 OLDSCHOOL LIVE` |

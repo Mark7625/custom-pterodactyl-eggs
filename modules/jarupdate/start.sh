@@ -12,15 +12,19 @@ header() {
 
 enabled() { [[ "$1" =~ ^(true|1|yes|on)$ ]]; }
 
+sanitize_var() {
+  printf '%s' "$1" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
 JAR_UPDATE_STATUS="${JAR_UPDATE_STATUS:-1}"
 JAR_UPDATE_MODE="${JAR_UPDATE_MODE:-Automatic}"
-JAR_UPDATE_REPO="${JAR_UPDATE_REPO:-}"
-JAR_UPDATE_TAG="${JAR_UPDATE_TAG:-}"
-JAR_RELEASE_FILTER="${JAR_RELEASE_FILTER:-}"
+JAR_UPDATE_REPO="$(sanitize_var "${JAR_UPDATE_REPO:-}")"
+JAR_UPDATE_TAG="$(sanitize_var "${JAR_UPDATE_TAG:-}")"
+JAR_RELEASE_FILTER="$(sanitize_var "${JAR_RELEASE_FILTER:-}")"
 JAR_UPDATE_INCLUDE_PRERELEASE="${JAR_UPDATE_INCLUDE_PRERELEASE:-0}"
 JAR_UPDATE_PROMPT_SEC="${JAR_UPDATE_PROMPT_SEC:-60}"
 JAR_UPDATE_DEBUG="${JAR_UPDATE_DEBUG:-0}"
-SERVER_JAR="${SERVER_JAR:-app.jar}"
+SERVER_JAR="$(sanitize_var "${SERVER_JAR:-app.jar}")"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 CONTAINER_ROOT="/home/container"
@@ -42,13 +46,51 @@ resolve_update_mode() {
 
 github_curl() {
   local url="$1"
+  local tmp http_code
+  tmp=$(mktemp)
   local -a args=(
-    -fsSL --max-time 45
+    -sS --max-time 45
     -H "Accept: application/vnd.github+json"
+    -H "X-GitHub-Api-Version: 2022-11-28"
     -H "User-Agent: Pterodactyl-Ktor-JarUpdate"
+    -o "$tmp"
+    -w "%{http_code}"
   )
   [[ -n "$GITHUB_TOKEN" ]] && args+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
-  curl "${args[@]}" "$url" 2>/dev/null
+  http_code=$(curl "${args[@]}" "$url" 2>/dev/null || echo "000")
+  if [[ "$http_code" == "200" ]]; then
+    cat "$tmp"
+    rm -f "$tmp"
+    return 0
+  fi
+  if [[ -s "$tmp" ]]; then
+    echo -e "${YELLOW}[JarUpdate] GitHub API ${http_code}: $(head -c 200 "$tmp")${NC}" >&2
+  else
+    echo -e "${YELLOW}[JarUpdate] GitHub API request failed (HTTP ${http_code}).${NC}" >&2
+  fi
+  if [[ "$http_code" == "403" || "$http_code" == "429" ]]; then
+    echo -e "${YELLOW}[JarUpdate] Rate limited — add GITHUB_TOKEN (PAT) to egg variables.${NC}" >&2
+  elif [[ "$http_code" == "404" ]]; then
+    echo -e "${YELLOW}[JarUpdate] Repo or release not found — check JAR_UPDATE_REPO.${NC}" >&2
+  fi
+  rm -f "$tmp"
+  return 1
+}
+
+fetch_releases_json() {
+  local api_url="https://api.github.com/repos/${JAR_UPDATE_REPO}/releases?per_page=30"
+  local releases_json latest_json
+  releases_json=$(github_curl "$api_url") || releases_json=""
+  if [[ -n "$releases_json" && "$releases_json" != "[]" ]]; then
+    printf '%s' "$releases_json"
+    return 0
+  fi
+  latest_json=$(github_curl "https://api.github.com/repos/${JAR_UPDATE_REPO}/releases/latest") || latest_json=""
+  if [[ -n "$latest_json" ]]; then
+    printf '[%s]' "$latest_json"
+    return 0
+  fi
+  return 1
 }
 
 find_matching_release() {
@@ -147,8 +189,10 @@ download_jar() {
   local url="$1"
   local tag="$2"
   local tmp="${JAR_PATH}.download"
+  local -a dl_args=(-fsSL --max-time 300 -L -o "$tmp")
   echo -e "${CYAN}[JarUpdate] Downloading ${SERVER_JAR} (${tag})...${NC}"
-  if ! curl -fsSL --max-time 300 -o "$tmp" "$url"; then
+  [[ -n "$GITHUB_TOKEN" ]] && dl_args+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+  if ! curl "${dl_args[@]}" "$url"; then
     echo -e "${RED}[JarUpdate] Download failed.${NC}"
     rm -f "$tmp"
     return 1
@@ -205,17 +249,26 @@ sys.exit(1)
     release_name=$(echo "$parsed" | sed -n '3p')
   fi
 else
-  releases_json=$(github_curl "https://api.github.com/repos/${JAR_UPDATE_REPO}/releases?per_page=30") || releases_json=""
+  if [[ -z "$GITHUB_TOKEN" ]]; then
+    echo -e "${YELLOW}[JarUpdate] GITHUB_TOKEN not set — public repos only; rate limits may block API calls.${NC}"
+  fi
+  releases_json=$(fetch_releases_json) || releases_json=""
   if enabled "$JAR_UPDATE_DEBUG"; then
     echo -e "${CYAN}[JarUpdate] Filter: ${JAR_RELEASE_FILTER:-<none>}${NC}"
+    echo -e "${CYAN}[JarUpdate] Repo: ${JAR_UPDATE_REPO}${NC}"
     echo -e "${CYAN}[JarUpdate] Releases API response (${#releases_json} bytes)${NC}"
+    [[ -n "$releases_json" ]] && printf '%s\n' "$releases_json"
   fi
-  if [[ -n "$releases_json" && "$releases_json" != "[]" ]]; then
-    parsed=$(find_matching_release "$releases_json" "$JAR_RELEASE_FILTER" "$SERVER_JAR") || parsed=""
-    remote_tag=$(echo "$parsed" | sed -n '1p')
-    download_url=$(echo "$parsed" | sed -n '2p')
-    release_name=$(echo "$parsed" | sed -n '3p')
+  if [[ -z "$releases_json" || "$releases_json" == "[]" ]]; then
+    echo -e "${RED}[JarUpdate] Could not fetch releases from ${JAR_UPDATE_REPO}.${NC}"
+    echo -e "${CYAN}[JarUpdate] Add GITHUB_TOKEN (PAT) or pin JAR_UPDATE_TAG=2026-06-07-production-5f07770${NC}"
+    [[ -f "$JAR_PATH" ]] || exit 1
+    exit 0
   fi
+  parsed=$(find_matching_release "$releases_json" "$JAR_RELEASE_FILTER" "$SERVER_JAR") || parsed=""
+  remote_tag=$(echo "$parsed" | sed -n '1p')
+  download_url=$(echo "$parsed" | sed -n '2p')
+  release_name=$(echo "$parsed" | sed -n '3p')
 fi
 
 if [[ -z "$remote_tag" || -z "$download_url" ]]; then
@@ -224,10 +277,11 @@ if [[ -z "$remote_tag" || -z "$download_url" ]]; then
     echo -e "${CYAN}[JarUpdate] Tag '${JAR_UPDATE_TAG}' missing or '${SERVER_JAR}' not attached.${NC}"
   elif [[ -n "$JAR_RELEASE_FILTER" ]]; then
     echo -e "${CYAN}[JarUpdate] No release with filter '${JAR_RELEASE_FILTER}' in tag/title and asset '${SERVER_JAR}'.${NC}"
+    echo -e "${CYAN}[JarUpdate] Expected tag like *-${JAR_RELEASE_FILTER}-* (see ${JAR_UPDATE_REPO}/releases).${NC}"
     echo -e "${CYAN}[JarUpdate] Recent releases:${NC}"
     list_matching_releases "${releases_json:-[]}" ""
   else
-    echo -e "${CYAN}[JarUpdate] Set JAR_RELEASE_FILTER (e.g. diff, production) or JAR_UPDATE_TAG (e.g. v1.0.0).${NC}"
+    echo -e "${CYAN}[JarUpdate] Set JAR_RELEASE_FILTER (e.g. production, diff) or JAR_UPDATE_TAG.${NC}"
   fi
   [[ -f "$JAR_PATH" ]] || exit 1
   exit 0
