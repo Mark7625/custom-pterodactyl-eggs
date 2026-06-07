@@ -1,0 +1,293 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-06-07T00:00:00+00:00",
+    "name": "Pterodactyl Next.js Egg",
+    "author": "Mark7625",
+    "description": "Pterodactyl Next.js Egg\r\n\r\nDeploy Next.js apps on Pterodactyl. Pulls your site from Git on every restart, runs next build + next start, and proxies traffic through Nginx. Supports SSR, API routes, and middleware. Includes Cloudflare Tunnel, Certbot SSL, cron jobs, and egg auto-updates.\r\n\r\nKey Features:\r\n\r\n\u2705 Next.js build & start (next build / next start)\r\n\u2705 Nginx reverse proxy for SSR and API routes\r\n\u2705 Website repo, branch, and token configuration\r\n\u2705 Git pull on restart\r\n\u2705 Cloudflare Tunnel + Certbot SSL\r\n\u2705 Optional static export mode",
+    "features": null,
+    "docker_images": {
+        "ghcr.io/mark7625/pterodactyl-nextjs-egg:22-latest": "Node.js 22 LTS",
+        "ghcr.io/mark7625/pterodactyl-nextjs-egg:20-latest": "Node.js 20 LTS"
+    },
+    "file_denylist": [],
+    "startup": "./start-modules.sh",
+    "config": {
+        "files": "{\r\n    \"nginx/conf.d/default.conf\": {\r\n        \"parser\": \"file\",\r\n        \"find\": {\r\n            \"    listen\": \"    listen {{server.build.default.port}};\"\r\n        }\r\n    }\r\n}",
+        "startup": "{\r\n    \"done\": \"Services successfully launched\"\r\n}",
+        "logs": "{\r\n    \"location\": \"logs/latest.log\"\r\n}",
+        "stop": "^C & ^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\r\n\r\nEGG_REPO=\"https://github.com/Mark7625/custom-pterodactyl-eggs.git\"\r\nEGG_BRANCH=\"nextjs\"\r\n\r\nWEBSITE_REPO=\"${WEBSITE_REPO:-${GIT_ADDRESS:-}}\"\r\nWEBSITE_BRANCH=\"${WEBSITE_BRANCH:-${GIT_BRANCH:-}}\"\r\nWEBSITE_TOKEN=\"${WEBSITE_TOKEN:-${ACCESS_TOKEN:-}}\"\r\nWEBSITE_USERNAME=\"${WEBSITE_USERNAME:-${USERNAME:-}}\"\r\n\r\necho -e \"[SETUP] Install packages\"\r\napt-get update -qq > /dev/null 2>&1 && apt-get install -qq > /dev/null 2>&1 -y git wget\r\n\r\ngit ls-remote \"$EGG_REPO\" \"refs/heads/${EGG_BRANCH}\" | awk '{print $1}' | head -1 > /mnt/server/VERSION\r\n\r\ncd /mnt/server\r\n\r\necho -e \"[SETUP] Create folders\"\r\nmkdir -p logs tmp www public\r\n\r\necho \"[Git] Cloning egg repository '${EGG_REPO}' (branch: ${EGG_BRANCH})\"\r\ngit clone --branch \"$EGG_BRANCH\" --single-branch \"$EGG_REPO\" /mnt/server/gtemp > /dev/null 2>&1 \\\r\n  && echo \"[Git] Repository cloned successfully.\" \\\r\n  || { echo \"[Git] Error: Default repository clone failed.\"; exit 21; }\r\n\r\necho \"[Git] Copying egg files from repository.\"\r\ncp -r /mnt/server/gtemp/nginx /mnt/server || { echo \"[Git] Error: Copying 'nginx' folder failed.\"; exit 22; }\r\ncp -r /mnt/server/gtemp/modules /mnt/server || { echo \"[Git] Error: Copying 'modules' folder failed.\"; exit 22; }\r\ncp /mnt/server/gtemp/start-modules.sh /mnt/server || { echo \"[Git] Error: Copying 'start-modules.sh' file failed.\"; exit 22; }\r\ncp /mnt/server/gtemp/LICENSE /mnt/server || { echo \"[Git] Error: Copying 'LICENSE' file failed.\"; exit 22; }\r\nchmod +x /mnt/server/start-modules.sh\r\nfind /mnt/server/modules -type f -name \"*.sh\" -exec chmod +x {} \\;\r\n\r\nrm -rf /mnt/server/gtemp\r\n\r\nif [ -z \"${WEBSITE_REPO}\" ]; then\r\n    echo \"[Website] Info: WEBSITE_REPO is not set.\"\r\n    echo \"[Website] Website deploy is disabled during install.\"\r\n    cat > /mnt/server/www/index.html <<'HTML'\r\n<!DOCTYPE html>\r\n<html lang=\"en\">\r\n<head>\r\n  <meta charset=\"UTF-8\">\r\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n  <title>Next.js Egg</title>\r\n</head>\r\n<body>\r\n  <h1>Pterodactyl Next.js Egg</h1>\r\n  <p>Set <code>WEBSITE_REPO</code> to your Next.js repository and restart the server.</p>\r\n</body>\r\n</html>\r\nHTML\r\n    ln -sfn /mnt/server/www /mnt/server/public\r\nelse\r\n    if [[ ${WEBSITE_REPO} != *.git ]]; then\r\n        WEBSITE_REPO=\"${WEBSITE_REPO}.git\"\r\n    fi\r\n\r\n    if [ -n \"${WEBSITE_TOKEN}\" ]; then\r\n        GIT_DOMAIN=$(echo \"${WEBSITE_REPO}\" | sed -E 's|https://([^/]+)/.*|\\1|')\r\n        GIT_REPO_PATH=$(echo \"${WEBSITE_REPO}\" | sed -E 's|https://[^/]+/(.*)|\\1|')\r\n        AUTH_USER=\"${WEBSITE_USERNAME:-x-access-token}\"\r\n        CLONE_URL=\"https://${AUTH_USER}:${WEBSITE_TOKEN}@${GIT_DOMAIN}/${GIT_REPO_PATH}\"\r\n        echo \"[Website] Using authenticated Git access.\"\r\n    else\r\n        CLONE_URL=\"${WEBSITE_REPO}\"\r\n        echo \"[Website] Using anonymous Git access.\"\r\n    fi\r\n\r\n    rm -rf /mnt/server/www\r\n    mkdir -p /mnt/server/www\r\n\r\n    if [ -n \"${WEBSITE_BRANCH}\" ]; then\r\n        git clone --branch \"${WEBSITE_BRANCH}\" --single-branch \"${CLONE_URL}\" /mnt/server/www > /dev/null 2>&1 \\\r\n          && echo \"[Website] Repository cloned successfully (branch '${WEBSITE_BRANCH}').\" \\\r\n          || { echo \"[Website] Error: git clone failed (branch '${WEBSITE_BRANCH}').\"; exit 14; }\r\n    else\r\n        git clone \"${CLONE_URL}\" /mnt/server/www > /dev/null 2>&1 \\\r\n          && echo \"[Website] Repository cloned successfully.\" \\\r\n          || { echo \"[Website] Error: git clone failed.\"; exit 14; }\r\n    fi\r\nfi\r\n\r\necho -e \"[DONE] Everything has been installed successfully\"\r\necho -e \"[INFO] You can now start the Next.js server\"\r\n",
+            "container": "debian:bookworm-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Enable Auto-Update",
+            "description": "Check for egg infrastructure updates on startup",
+            "env_variable": "AUTOUPDATE_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Force Auto-Update",
+            "description": "Automatically apply egg updates without confirmation",
+            "env_variable": "AUTOUPDATE_FORCE",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Node.js Version",
+            "description": "Node.js version matching your Docker image (22 or 20)",
+            "env_variable": "NODE_VERSION",
+            "default_value": "22",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:2",
+            "field_type": "text"
+        },
+        {
+            "name": "Website Repository",
+            "description": "Git URL of your Next.js project\r\nI.E. https://github.com/user/my-nextjs-site",
+            "env_variable": "WEBSITE_REPO",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Website Branch",
+            "description": "Branch to deploy from your Next.js repo",
+            "env_variable": "WEBSITE_BRANCH",
+            "default_value": "main",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Website Access Token",
+            "description": "Personal Access Token for private repos.\r\nLeave blank for public repositories.",
+            "env_variable": "WEBSITE_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Website Git Username",
+            "description": "Git username for private repo auth.\r\nDefault: x-access-token (GitHub PATs)",
+            "env_variable": "WEBSITE_USERNAME",
+            "default_value": "x-access-token",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable Website Deploy",
+            "description": "Pull Next.js repo updates on every restart.\r\n0 = false\r\n1 = true (default)",
+            "env_variable": "GIT_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable Next.js Build & Start",
+            "description": "Install deps, next build, and next start on every restart.\r\n0 = false\r\n1 = true (default)",
+            "env_variable": "NEXTJS_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Install Command",
+            "description": "Command to install dependencies before build",
+            "env_variable": "INSTALL_COMMAND",
+            "default_value": "npm install",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Build Command",
+            "description": "Next.js production build command",
+            "env_variable": "BUILD_COMMAND",
+            "default_value": "npx next build",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Start Command",
+            "description": "Next.js production start command.\r\nSet to none for static export only.",
+            "env_variable": "START_COMMAND",
+            "default_value": "npx next start",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Serve Mode",
+            "description": "How to serve the built Next.js app.\r\nnode = Nginx proxies to Next.js server (SSR/API \u2014 recommended)\r\nstatic = serve static export files only (requires output: export)",
+            "env_variable": "SERVE_MODE",
+            "default_value": "node",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:node,static",
+            "field_type": "text"
+        },
+        {
+            "name": "Next.js Port",
+            "description": "Internal port Next.js listens on (default 3000).\r\nNginx proxies your server port to this.",
+            "env_variable": "APP_PORT",
+            "default_value": "3000",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Static Export Directory",
+            "description": "Output folder for static export mode only.\r\nDefault: out (Next.js static export)",
+            "env_variable": "BUILD_OUTPUT_DIR",
+            "default_value": "out",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable LogCleaner Module",
+            "description": "Run log cleanup on container startup",
+            "env_variable": "LOGCLEANER_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable Cloudflare Tunnel",
+            "description": "Start Cloudflared tunnel on startup",
+            "env_variable": "CLOUDFLARED_STATUS",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Cloudflared Tunnel Token",
+            "description": "Cloudflare Tunnel token",
+            "env_variable": "CLOUDFLARED_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|regex:/^[A-Za-z0-9_-]+$/",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable Cron Module",
+            "description": "Enable cron job scheduling",
+            "env_variable": "CRON_STATUS",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Cron Config File",
+            "description": "Path to crontab configuration file",
+            "env_variable": "CRON_CONFIG_FILE",
+            "default_value": "/home/container/crontab",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable Certbot SSL",
+            "description": "Enable Certbot SSL certificate management\r\n0 = false\r\n1 = true",
+            "env_variable": "CERTBOT_STATUS",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Certbot Email",
+            "description": "Email for Let's Encrypt notifications",
+            "env_variable": "CERTBOT_EMAIL",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|email",
+            "field_type": "text"
+        },
+        {
+            "name": "Certbot Domain",
+            "description": "Primary domain for SSL certificate",
+            "env_variable": "CERTBOT_DOMAIN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|regex:/^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(?:\\.[a-zA-Z]{2,})+$/",
+            "field_type": "text"
+        },
+        {
+            "name": "Certbot Webroot Path",
+            "description": "Document root for webroot validation",
+            "env_variable": "CERTBOT_WEBROOT_PATH",
+            "default_value": "/home/container/public",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Certbot Staging Mode",
+            "description": "Use Let's Encrypt staging server\r\n0 = Production\r\n1 = Staging",
+            "env_variable": "CERTBOT_STAGING",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Certbot Force Renewal",
+            "description": "Force certificate renewal\r\n0 = renew when needed\r\n1 = force renewal",
+            "env_variable": "CERTBOT_FORCE_RENEWAL",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        }
+    ]
+}
