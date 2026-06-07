@@ -1,0 +1,223 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-06-07T00:00:00+00:00",
+    "name": "Pterodactyl Ktor / JAR Egg",
+    "author": "mark7625@users.noreply.github.com",
+    "description": "Pterodactyl Ktor / JAR Egg\r\n\r\nRuns pre-built JARs from GitHub Releases with Java 11 or 22. Egg autoupdate, JAR updates, and optional Cloudflare Tunnel. Branch: ktor.",
+    "features": null,
+    "docker_images": {
+        "ghcr.io/mark7625/custom-pterodactyl-eggs/ktor:22-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs/ktor:22-latest",
+        "ghcr.io/mark7625/custom-pterodactyl-eggs/ktor:11-latest": "ghcr.io/mark7625/custom-pterodactyl-eggs/ktor:11-latest"
+    },
+    "file_denylist": [],
+    "startup": "./start-modules.sh",
+    "config": {
+        "files": "{}",
+        "startup": "{\r\n    \"done\": \"Services successfully launched\"\r\n}",
+        "logs": "{\r\n    \"location\": \"logs/ktor.log\"\r\n}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\r\n\r\nEGG_REPO=\"https://github.com/Mark7625/custom-pterodactyl-eggs.git\"\r\nEGG_BRANCH=\"ktor\"\r\n\r\necho -e \"[SETUP] Install packages\"\r\napt-get update -qq > /dev/null 2>&1 && apt-get install -qq -y git wget curl > /dev/null 2>&1\r\n\r\ngit ls-remote \"$EGG_REPO\" \"refs/heads/${EGG_BRANCH}\" | awk '{print $1}' | head -1 > /mnt/server/VERSION\r\n\r\ncd /mnt/server\r\n\r\necho -e \"[SETUP] Create folders\"\r\nmkdir -p logs tmp\r\n\r\necho \"[Git] Cloning egg repository '${EGG_REPO}' (branch: ${EGG_BRANCH})\"\r\ngit clone --branch \"$EGG_BRANCH\" --single-branch \"$EGG_REPO\" /mnt/server/gtemp > /dev/null 2>&1 \\\r\n  && echo \"[Git] Repository cloned successfully.\" \\\r\n  || { echo \"[Git] Error: Could not clone branch '${EGG_BRANCH}'.\"; exit 1; }\r\n\r\necho \"[SETUP] Copying egg files\"\r\ncp -r /mnt/server/gtemp/modules /mnt/server/\r\ncp /mnt/server/gtemp/start-modules.sh /mnt/server/\r\ncp /mnt/server/gtemp/entrypoint.sh /mnt/server/ 2>/dev/null || true\r\nchmod +x /mnt/server/start-modules.sh\r\nfind /mnt/server/modules -type f -name \"*.sh\" -exec chmod +x {} +\r\n\r\nrm -rf /mnt/server/gtemp\r\n\r\necho \"[SETUP] Ktor egg installed. Set JAR_UPDATE_REPO, SERVER_JAR, and APP_PORT in Startup.\"\r\n",
+            "container": "debian:bookworm-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Enable Auto-Update",
+            "description": "Update egg scripts from GitHub branch ktor on startup",
+            "env_variable": "AUTOUPDATE_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Force Auto-Update",
+            "description": "Apply egg script updates without confirmation",
+            "env_variable": "AUTOUPDATE_FORCE",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable JAR Update",
+            "description": "Download JAR from GitHub Releases on startup",
+            "env_variable": "JAR_UPDATE_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "JAR Update Mode",
+            "description": "Automatic, Notification, or Disabled",
+            "env_variable": "JAR_UPDATE_MODE",
+            "default_value": "Automatic",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "GitHub Repo",
+            "description": "owner/repo for releases (e.g. Mark7625/OpenRune-WebServer)",
+            "env_variable": "JAR_UPDATE_REPO",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Release Filter",
+            "description": "Match text in release tag or title for latest (e.g. diff, production). Blank = newest release",
+            "env_variable": "JAR_RELEASE_FILTER",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Release Tag",
+            "description": "Pin exact tag (e.g. v1.0.0 or 2026-06-07-diff-abc1234). Overrides filter",
+            "env_variable": "JAR_UPDATE_TAG",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "JAR Filename",
+            "description": "Release asset filename (e.g. openrune-server.jar)",
+            "env_variable": "SERVER_JAR",
+            "default_value": "app.jar",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "GitHub Token",
+            "description": "Optional PAT for API rate limits / private repos",
+            "env_variable": "GITHUB_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Include Prereleases",
+            "description": "Use newest prerelease when no tag pinned",
+            "env_variable": "JAR_UPDATE_INCLUDE_PRERELEASE",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "App Port",
+            "description": "Port the JAR listens on. Defaults to Pterodactyl allocation (SERVER_PORT)",
+            "env_variable": "APP_PORT",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|max:5",
+            "field_type": "text"
+        },
+        {
+            "name": "App Port Method",
+            "description": "property = -Dktor.deployment.port, cli = append port as JAR arg",
+            "env_variable": "APP_PORT_METHOD",
+            "default_value": "property",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "App Arguments",
+            "description": "Args after -jar (e.g. -1 OLDSCHOOL LIVE for OpenRune WebServer)",
+            "env_variable": "APP_ARGS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Java Options",
+            "description": "JVM flags",
+            "env_variable": "JAVA_OPTS",
+            "default_value": "-Xms128M -XX:MaxRAMPercentage=95.0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Extra JVM Flags",
+            "description": "Additional JVM flags",
+            "env_variable": "JVM_EXTRA_FLAGS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Java Startup Override",
+            "description": "Full java command override. Leave blank for auto",
+            "env_variable": "JAVA_STARTUP",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable Ktor Module",
+            "description": "Start the JAR",
+            "env_variable": "KTOR_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable Cloudflare Tunnel",
+            "description": "Cloudflared tunnel for HTTPS / split ingress",
+            "env_variable": "CLOUDFLARED_STATUS",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Cloudflare Tunnel Token",
+            "description": "Tunnel token from Cloudflare Zero Trust",
+            "env_variable": "CLOUDFLARED_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|regex:/^[A-Za-z0-9_-]+$/",
+            "field_type": "text"
+        }
+    ]
+}
