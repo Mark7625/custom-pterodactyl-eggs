@@ -72,7 +72,7 @@
         },
         {
             "name": "Site Port",
-            "description": "Port your site listens on. Set to your Pterodactyl allocation port.",
+            "description": "Public port Nginx listens on. Set to your Pterodactyl allocation (e.g. 2034). Next.js stays on APP_PORT 3000 internally.",
             "env_variable": "SITE_PORT",
             "default_value": "",
             "user_viewable": true,

@@ -113,7 +113,9 @@ if [[ "$serve_mode" == "static" ]]; then
   echo -e "${WHITE}[Startup] Port ${listen_port} -> static files${NC}"
 else
   apply_node_config "$listen_port"
-  echo -e "${WHITE}[Startup] Port ${listen_port} -> Next.js on ${APP_PORT}${NC}"
+  echo -e "${WHITE}[Startup] Public port ${listen_port} -> Next.js internal port ${APP_PORT}${NC}"
+  echo -e "${YELLOW}[Startup] HTTP only on port ${listen_port} — use http://your-domain:${listen_port} (not https)${NC}"
+  echo -e "${YELLOW}[Startup] For HTTPS use Cloudflare Tunnel or a host reverse proxy on port 443${NC}"
 fi
 
 echo -e "${GREEN}[Startup] Services successfully launched!${NC}"

@@ -16,3 +16,5 @@ Pulls your website source from Git on every server restart (clone on first run, 
 Legacy variables `GIT_ADDRESS`, `GIT_BRANCH`, `ACCESS_TOKEN`, and `USERNAME` are still supported as fallbacks.
 
 Set `SITE_PORT` to your Pterodactyl allocation port (one site per server).
+
+When a pull changes commits, writes `/home/container/tmp/website_updated` so the Next.js module knows to reinstall and rebuild.

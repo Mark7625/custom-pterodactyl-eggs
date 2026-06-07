@@ -2,6 +2,13 @@
 
 Installs dependencies, builds, and starts your Next.js app before Nginx proxies traffic to it.
 
+`npm install` and `next build` run only when:
+- Git clone/pull brought in new commits
+- `node_modules` or `.next` is missing (first start)
+- `CLEAN_NODE_MODULES=1` or `.rebuild_requested` cron flag is set
+
+Plain restarts with no git changes skip install and build for faster startup.
+
 ## Configuration
 
 | Env Variable | Default | Description |

@@ -24,6 +24,7 @@ BUILD_OUTPUT_DIR="${BUILD_OUTPUT_DIR:-out}"
 APP_PID_FILE="/home/container/tmp/nextjs.pid"
 APP_LOG_FILE="/home/container/logs/nextjs.log"
 SERVE_MODE_FILE="/home/container/tmp/serve_mode"
+WEBSITE_UPDATED_FILE="${WEBSITE_UPDATED_FILE:-/home/container/tmp/website_updated}"
 
 enabled() { [[ "$1" =~ ^(true|1)$ ]]; }
 
@@ -63,15 +64,55 @@ run_install() {
   eval "$INSTALL_COMMAND"
 }
 
-echo -e "${WHITE}[Next.js] Installing dependencies: ${INSTALL_COMMAND}${NC}"
-if ! run_install; then
-  echo -e "${YELLOW}[Next.js] Install failed; removing node_modules and retrying once...${NC}"
-  rm -rf node_modules
-  run_install
+needs_install=false
+needs_build=false
+website_update_reason=""
+
+if [[ -f "$WEBSITE_UPDATED_FILE" ]]; then
+  website_update_reason=$(tr -d '\n\r' < "$WEBSITE_UPDATED_FILE")
+  needs_install=true
+  needs_build=true
+elif [[ ! -d node_modules ]]; then
+  needs_install=true
+  needs_build=true
+elif [[ ! -d .next ]]; then
+  needs_build=true
 fi
 
-echo -e "${WHITE}[Next.js] Building: ${BUILD_COMMAND}${NC}"
-eval "$BUILD_COMMAND"
+if enabled "${CLEAN_NODE_MODULES:-0}"; then
+  needs_install=true
+fi
+
+if [[ -f /home/container/.rebuild_requested ]]; then
+  echo -e "${WHITE}[Next.js] Rebuild requested via cron flag.${NC}"
+  needs_install=true
+  needs_build=true
+  rm -f /home/container/.rebuild_requested
+fi
+
+if $needs_install; then
+  if [[ -n "$website_update_reason" ]]; then
+    echo -e "${WHITE}[Next.js] Git update detected (${website_update_reason}); installing dependencies${NC}"
+  else
+    echo -e "${WHITE}[Next.js] Installing dependencies (first run or missing node_modules)${NC}"
+  fi
+  echo -e "${WHITE}[Next.js] Command: ${INSTALL_COMMAND}${NC}"
+  if ! run_install; then
+    echo -e "${YELLOW}[Next.js] Install failed; removing node_modules and retrying once...${NC}"
+    rm -rf node_modules
+    run_install
+  fi
+  rm -f "$WEBSITE_UPDATED_FILE"
+else
+  echo -e "${YELLOW}[Next.js] Skipping npm install — no git updates since last start.${NC}"
+fi
+
+if $needs_build; then
+  echo -e "${WHITE}[Next.js] Building: ${BUILD_COMMAND}${NC}"
+  eval "$BUILD_COMMAND"
+else
+  echo -e "${YELLOW}[Next.js] Skipping build — no git updates and existing .next output found.${NC}"
+fi
 
 if [[ "$SERVE_MODE" == "static" ]]; then
   if [[ ! -d "${APP_DIR}/${BUILD_OUTPUT_DIR}" ]]; then
@@ -96,7 +137,7 @@ fi
 
 echo "node" > "$SERVE_MODE_FILE"
 echo -e "${WHITE}[Next.js] Starting server: ${START_COMMAND}${NC}"
-echo -e "${WHITE}[Next.js] Internal port: ${APP_PORT}${NC}"
+echo -e "${WHITE}[Next.js] Internal port: ${APP_PORT} (Nginx proxies your SITE_PORT to this)${NC}"
 
 export PORT="$APP_PORT"
 export HOSTNAME="127.0.0.1"

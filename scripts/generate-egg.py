@@ -56,7 +56,7 @@ egg = {
         var("Force Auto-Update", "Automatically apply egg updates without confirmation", "AUTOUPDATE_FORCE", "1", "required|boolean"),
         var("Next.js Version", "Target Next.js version for your project (default 16). Ensure next is in your package.json.", "NEXTJS_VERSION", "16", "required|string|max:2"),
         var("Node.js Version", "Node.js runtime in the Docker image. Use 22 with 16-latest or 22-latest image. Use 20 with 20-latest image.", "NODE_VERSION", "22", "required|string|max:2"),
-        var("Site Port", "Port your site listens on. Set to your Pterodactyl allocation port.", "SITE_PORT", "", "nullable|string"),
+        var("Site Port", "Public port Nginx listens on. Set to your Pterodactyl allocation (e.g. 2034). Next.js stays on APP_PORT 3000 internally.", "SITE_PORT", "", "nullable|string"),
         var("Website Repository", "Git URL of your Next.js project", "WEBSITE_REPO", "", "nullable|string"),
         var("Website Branch", "Branch to deploy from your Next.js repo", "WEBSITE_BRANCH", "main", "nullable|string"),
         var("Website Access Token", "Personal Access Token for private repos. Leave blank for public repos.", "WEBSITE_TOKEN", "", "nullable|string"),

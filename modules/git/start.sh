@@ -14,12 +14,19 @@ header() {
 
 GIT_STATUS="${GIT_STATUS:-true}"
 WEBSITE_DIR="${WEBSITE_DIR:-/home/container/www}"
+WEBSITE_UPDATED_FILE="${WEBSITE_UPDATED_FILE:-/home/container/tmp/website_updated}"
 WEBSITE_REPO="${WEBSITE_REPO:-${GIT_ADDRESS:-}}"
 WEBSITE_BRANCH="${WEBSITE_BRANCH:-${GIT_BRANCH:-}}"
 WEBSITE_TOKEN="${WEBSITE_TOKEN:-${ACCESS_TOKEN:-}}"
 WEBSITE_USERNAME="${WEBSITE_USERNAME:-${USERNAME:-x-access-token}}"
 
 enabled() { [[ "$1" =~ ^(true|1)$ ]]; }
+
+mark_website_updated() {
+  local reason="$1"
+  mkdir -p "$(dirname "$WEBSITE_UPDATED_FILE")"
+  echo "$reason" > "$WEBSITE_UPDATED_FILE"
+}
 
 build_auth_url() {
   local repo_url="$1"
@@ -65,11 +72,13 @@ if [[ ! -d "${WEBSITE_DIR}/.git" ]]; then
     git clone "$AUTH_URL" "$WEBSITE_DIR"
   fi
   echo -e "${GREEN}[Website] Repository cloned successfully.${NC}"
+  mark_website_updated "clone"
   exit 0
 fi
 
 cd "$WEBSITE_DIR"
 git remote set-url origin "$AUTH_URL"
+OLD_HEAD=$(git rev-parse HEAD 2>/dev/null || true)
 
 if [[ -n "$WEBSITE_BRANCH" ]]; then
   echo -e "${WHITE}[Website] Fetching branch '${WEBSITE_BRANCH}'...${NC}"
@@ -86,4 +95,10 @@ else
   git pull --ff-only
 fi
 
-echo -e "${GREEN}[Website] Repository updated successfully.${NC}"
+NEW_HEAD=$(git rev-parse HEAD 2>/dev/null || true)
+if [[ -n "$OLD_HEAD" && -n "$NEW_HEAD" && "$OLD_HEAD" != "$NEW_HEAD" ]]; then
+  echo -e "${GREEN}[Website] Repository updated (${OLD_HEAD:0:7} -> ${NEW_HEAD:0:7}).${NC}"
+  mark_website_updated "pull"
+else
+  echo -e "${YELLOW}[Website] Already up to date (${NEW_HEAD:0:7}); no deploy changes.${NC}"
+fi
