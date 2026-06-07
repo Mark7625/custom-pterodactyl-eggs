@@ -20,14 +20,19 @@ RUN apt-get update && apt-get install -y \
     && dpkg -i /tmp/cloudflared.deb \
     && rm /tmp/cloudflared.deb \
     && if [ "${JAVA_VERSION}" = "11" ]; then \
-        apt-get install -y openjdk-11-jre-headless; \
+        JDK_RELEASE="jdk-11.0.31%2B11"; \
+        JDK_PKG_VER="11.0.31_11"; \
+        JDK_REPO="temurin11-binaries"; \
     else \
-        wget -qO /tmp/jdk.tar.gz "https://github.com/adoptium/temurin22-binaries/releases/download/jdk-22.0.2%2B9/OpenJDK22U-jre_${JDK_ARCH}_linux_hotspot_22.0.2_9.tar.gz" \
-        && mkdir -p /opt/java \
-        && tar -xzf /tmp/jdk.tar.gz -C /opt/java --strip-components=1 \
-        && rm /tmp/jdk.tar.gz \
-        && ln -sf /opt/java/bin/java /usr/local/bin/java; \
+        JDK_RELEASE="jdk-22.0.2%2B9"; \
+        JDK_PKG_VER="22.0.2_9"; \
+        JDK_REPO="temurin22-binaries"; \
     fi \
+    && wget -qO /tmp/jdk.tar.gz "https://github.com/adoptium/${JDK_REPO}/releases/download/${JDK_RELEASE}/OpenJDK${JAVA_VERSION}U-jre_${JDK_ARCH}_linux_hotspot_${JDK_PKG_VER}.tar.gz" \
+    && mkdir -p /opt/java \
+    && tar -xzf /tmp/jdk.tar.gz -C /opt/java --strip-components=1 \
+    && rm /tmp/jdk.tar.gz \
+    && ln -sf /opt/java/bin/java /usr/local/bin/java \
     && java -version \
     && echo "Java ${JAVA_VERSION}" > /etc/pterodactyl-ktor-java-version \
     && rm -rf /var/lib/apt/lists/*
