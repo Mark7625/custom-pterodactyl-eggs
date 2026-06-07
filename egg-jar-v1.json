@@ -1,0 +1,154 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-06-07T00:00:00+00:00",
+    "name": "Pterodactyl Basic JAR Egg",
+    "author": "mark7625@users.noreply.github.com",
+    "description": "Pterodactyl Basic JAR Egg\r\n\r\nUpdate egg scripts, pull JAR from GitHub Releases, run java -jar. Branch: basic-jar.",
+    "features": [],
+    "docker_images": {
+        "Java 21": "ghcr.io/pterodactyl/yolks:java_21",
+        "Java 17": "ghcr.io/pterodactyl/yolks:java_17",
+        "Java 11": "ghcr.io/pterodactyl/yolks:java_11"
+    },
+    "file_denylist": [],
+    "startup": "bash ./start-modules.sh",
+    "config": {
+        "files": "{}",
+        "startup": "{\r\n    \"done\": \"Services successfully launched\"\r\n}",
+        "logs": "{\r\n    \"location\": \"logs/jar.log\"\r\n}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\r\n\r\nEGG_REPO=\"https://github.com/Mark7625/custom-pterodactyl-eggs.git\"\r\nEGG_BRANCH=\"basic-jar\"\r\n\r\necho -e \"[SETUP] Install packages\"\r\napt-get update -qq > /dev/null 2>&1 && apt-get install -qq -y git wget curl > /dev/null 2>&1\r\n\r\ngit ls-remote \"$EGG_REPO\" \"refs/heads/${EGG_BRANCH}\" | awk '{print $1}' | head -1 > /mnt/server/VERSION\r\n\r\ncd /mnt/server\r\n\r\necho -e \"[SETUP] Create folders\"\r\nmkdir -p logs tmp\r\n\r\necho \"[Git] Cloning egg repository '${EGG_REPO}' (branch: ${EGG_BRANCH})\"\r\ngit clone --branch \"$EGG_BRANCH\" --single-branch \"$EGG_REPO\" /mnt/server/gtemp > /dev/null 2>&1 \\\r\n  && echo \"[Git] Repository cloned successfully.\" \\\r\n  || { echo \"[Git] Error: Could not clone branch '${EGG_BRANCH}'.\"; exit 1; }\r\n\r\necho \"[SETUP] Copying egg files\"\r\ncp -r /mnt/server/gtemp/modules /mnt/server/\r\ncp -r /mnt/server/gtemp/scripts /mnt/server/\r\ncp /mnt/server/gtemp/start-modules.sh /mnt/server/\r\ncp /mnt/server/gtemp/entrypoint.sh /mnt/server/ 2>/dev/null || true\r\nchmod +x /mnt/server/scripts/*.sh 2>/dev/null || true\r\nchmod +x /mnt/server/start-modules.sh\r\nfind /mnt/server/modules -type f -name \"*.sh\" -exec chmod +x {} +\r\n\r\nrm -rf /mnt/server/gtemp\r\n\r\necho \"[SETUP] Basic JAR egg installed. Set JAR_UPDATE_REPO, SERVER_JAR, and APP_ARGS in Startup.\"\r\n",
+            "container": "debian:bookworm-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Enable Script Update",
+            "description": "Pull latest egg scripts from GitHub on startup",
+            "env_variable": "AUTOUPDATE_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Force Script Update",
+            "description": "Apply script updates without confirmation",
+            "env_variable": "AUTOUPDATE_FORCE",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable JAR Update",
+            "description": "Download JAR from GitHub Releases on startup",
+            "env_variable": "JAR_UPDATE_STATUS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "JAR Update Mode",
+            "description": "Automatic, Notification, or Disabled",
+            "env_variable": "JAR_UPDATE_MODE",
+            "default_value": "Automatic",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "GitHub Repo",
+            "description": "owner/repo or GitHub URL for releases",
+            "env_variable": "JAR_UPDATE_REPO",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Release Filter",
+            "description": "Match tag/title for latest (e.g. production). Blank = newest",
+            "env_variable": "JAR_RELEASE_FILTER",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Release Tag",
+            "description": "Pin exact tag. Overrides filter",
+            "env_variable": "JAR_UPDATE_TAG",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "JAR Filename",
+            "description": "Release asset filename",
+            "env_variable": "SERVER_JAR",
+            "default_value": "app.jar",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "GitHub Token",
+            "description": "Optional PAT for private repos / rate limits",
+            "env_variable": "GITHUB_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "App Arguments",
+            "description": "Args after -jar (port auto-appended from allocation if missing)",
+            "env_variable": "APP_ARGS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Java Options",
+            "description": "JVM flags",
+            "env_variable": "JAVA_OPTS",
+            "default_value": "-Xms128M -XX:MaxRAMPercentage=95.0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Java Startup Override",
+            "description": "Full java command override. Leave blank for auto",
+            "env_variable": "JAVA_STARTUP",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        }
+    ]
+}
