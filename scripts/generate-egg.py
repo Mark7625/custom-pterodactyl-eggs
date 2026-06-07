@@ -64,6 +64,7 @@ egg = {
         var("Enable Website Deploy", "Pull Next.js repo updates on every restart. 0 = false, 1 = true", "GIT_STATUS", "1", "required|boolean"),
         var("Enable Next.js Build and Start", "Install deps, next build, and next start on restart. 0 = false, 1 = true", "NEXTJS_STATUS", "1", "required|boolean"),
         var("Install Command", "Command to install dependencies before build", "INSTALL_COMMAND", "npm install", "required|string"),
+        var("Clean node_modules", "Delete node_modules before install on each restart. 0 = false, 1 = true", "CLEAN_NODE_MODULES", "0", "required|boolean"),
         var("Build Command", "Next.js production build command", "BUILD_COMMAND", "npx next build", "required|string"),
         var("Start Command", "Next.js production start command. Set to none for static export only.", "START_COMMAND", "npx next start", "required|string"),
         var("Serve Mode", "node = Nginx proxies to Next.js. static = serve static export only.", "SERVE_MODE", "node", "required|string"),

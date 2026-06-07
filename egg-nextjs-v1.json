@@ -151,6 +151,16 @@
             "field_type": "text"
         },
         {
+            "name": "Clean node_modules",
+            "description": "Delete node_modules before install on each restart. 0 = false, 1 = true",
+            "env_variable": "CLEAN_NODE_MODULES",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
             "name": "Build Command",
             "description": "Next.js production build command",
             "env_variable": "BUILD_COMMAND",

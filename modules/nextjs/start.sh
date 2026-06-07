@@ -44,12 +44,31 @@ if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p /home/container/logs /home/container/tmp
+mkdir -p /home/container/logs /home/container/tmp /home/container/.npm
+export HOME=/home/container
+export NPM_CONFIG_CACHE=/home/container/.npm
+export npm_config_cache=/home/container/.npm
+export COREPACK_HOME=/home/container/.corepack
+export NPM_CONFIG_UPDATE_NOTIFIER=false
 cd "$APP_DIR"
 
 echo -e "${WHITE}[Next.js] Target v${NEXTJS_VERSION} | Node $(node -v) | npm $(npm -v)${NC}"
+echo -e "${WHITE}[Next.js] HOME=${HOME} | npm cache=${NPM_CONFIG_CACHE}${NC}"
+
+run_install() {
+  if enabled "${CLEAN_NODE_MODULES:-0}" && [[ -d node_modules ]]; then
+    echo -e "${YELLOW}[Next.js] CLEAN_NODE_MODULES=1 — removing existing node_modules${NC}"
+    rm -rf node_modules
+  fi
+  eval "$INSTALL_COMMAND"
+}
+
 echo -e "${WHITE}[Next.js] Installing dependencies: ${INSTALL_COMMAND}${NC}"
-eval "$INSTALL_COMMAND"
+if ! run_install; then
+  echo -e "${YELLOW}[Next.js] Install failed; removing node_modules and retrying once...${NC}"
+  rm -rf node_modules
+  run_install
+fi
 
 echo -e "${WHITE}[Next.js] Building: ${BUILD_COMMAND}${NC}"
 eval "$BUILD_COMMAND"

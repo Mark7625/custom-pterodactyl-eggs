@@ -1,4 +1,11 @@
 #!/bin/bash
+# Pterodactyl may set the runtime user home to /nonexistent; npm needs a real HOME.
+export HOME=/home/container
+export USER="${USER:-container}"
+export NPM_CONFIG_CACHE=/home/container/.npm
+export COREPACK_HOME=/home/container/.corepack
+mkdir -p "$HOME" "$NPM_CONFIG_CACHE" "$COREPACK_HOME" /home/container/logs /home/container/tmp
+
 cd /home/container
 
 # Replace Startup Variables
