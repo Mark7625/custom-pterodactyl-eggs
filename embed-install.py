@@ -19,13 +19,14 @@ EMBED_FILES = [
     "modules/jarupdate/start.sh",
     "modules/config/start.sh",
     "modules/logcleaner/start.sh",
+    "modules/cloudflared/start.sh",
     "autoupdate-files.txt",
 ]
 
 INSTALL_STUB = """\
 #!/bin/ash
 # Reinstall via Pterodactyl panel to refresh scripts from the egg or GitHub.
-echo "[Install] OpenRune Game Server — scripts from Mark7625/custom-pterodactyl-eggs @ openrune-game-server"
+echo "[Install] ${OPENRUNE_BRAND:-OpenRune} Game Server — scripts from Mark7625/custom-pterodactyl-eggs @ openrune-game-server"
 exit 0
 """
 
@@ -50,13 +51,39 @@ def build_install_sh() -> str:
         "",
         "set -e",
         "",
-        'mkdir -p modules/autoupdate modules/jarupdate modules/config modules/logcleaner',
+        'mkdir -p modules/autoupdate modules/jarupdate modules/config modules/logcleaner modules/cloudflared',
         "",
         'fetch_file() {',
         '  path="$1"',
         '  mkdir -p "$(dirname "${path}")"',
         '  curl -fsSL --connect-timeout 15 --max-time 120 "${RAW}/${path}" -o "${path}.part"',
         '  mv -f "${path}.part" "${path}"',
+        "}",
+        "",
+        "install_cloudflared() {",
+        '  if [ -x cloudflared ]; then',
+        "    return 0",
+        "  fi",
+        '  arch=$(uname -m)',
+        '  case "${arch}" in',
+        "    x86_64|amd64) cf=amd64 ;;",
+        "    aarch64|arm64) cf=arm64 ;;",
+        "    *)",
+        '      echo "[Install] WARNING: unsupported arch ${arch}; skipping cloudflared"',
+        "      return 0",
+        "      ;;",
+        "  esac",
+        '  echo "[Install] GET cloudflared (${cf})"',
+        "  if curl -fsSL --connect-timeout 15 --max-time 300 \\",
+        '    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${cf}" \\',
+        "    -o cloudflared.part; then",
+        "    mv -f cloudflared.part cloudflared",
+        "    chmod +x cloudflared",
+        "  else",
+        "    rm -f cloudflared.part",
+        '    echo "[Install] WARNING: cloudflared download failed; the tunnel module will not start"',
+        "  fi",
+        "  return 0",
         "}",
         "",
         "try_github_install() {",
@@ -74,10 +101,11 @@ def build_install_sh() -> str:
         "  return 0",
         "}",
         "",
-        'echo "[Install] OpenRune Game Server"',
+        'echo "[Install] ${OPENRUNE_BRAND:-OpenRune} Game Server"',
         "",
         'if try_github_install; then',
         '  echo "[Install] Pulled scripts from ${RAW}"',
+        "  install_cloudflared",
         '  echo "[Install] done"',
         "  exit 0",
         "fi",
@@ -101,6 +129,7 @@ def build_install_sh() -> str:
     lines.append("__OPENRUNE_EMBED__")
     lines.append('chmod +x "install.sh"')
     lines.append("")
+    lines.append("install_cloudflared")
     lines.append('echo "[Install] done"')
     lines.append("")
     return "\n".join(lines)

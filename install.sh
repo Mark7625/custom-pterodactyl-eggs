@@ -12,7 +12,7 @@ cd "${INSTALL_DIR}" 2>/dev/null || {
 
 set -e
 
-mkdir -p modules/autoupdate modules/jarupdate modules/config modules/logcleaner
+mkdir -p modules/autoupdate modules/jarupdate modules/config modules/logcleaner modules/cloudflared
 
 fetch_file() {
   path="$1"
@@ -21,11 +21,37 @@ fetch_file() {
   mv -f "${path}.part" "${path}"
 }
 
+install_cloudflared() {
+  if [ -x cloudflared ]; then
+    return 0
+  fi
+  arch=$(uname -m)
+  case "${arch}" in
+    x86_64|amd64) cf=amd64 ;;
+    aarch64|arm64) cf=arm64 ;;
+    *)
+      echo "[Install] WARNING: unsupported arch ${arch}; skipping cloudflared"
+      return 0
+      ;;
+  esac
+  echo "[Install] GET cloudflared (${cf})"
+  if curl -fsSL --connect-timeout 15 --max-time 300 \
+    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${cf}" \
+    -o cloudflared.part; then
+    mv -f cloudflared.part cloudflared
+    chmod +x cloudflared
+  else
+    rm -f cloudflared.part
+    echo "[Install] WARNING: cloudflared download failed; the tunnel module will not start"
+  fi
+  return 0
+}
+
 try_github_install() {
   if ! command -v curl >/dev/null 2>&1; then
     return 1
   fi
-  for path in "start.sh" "start-modules.sh" "modules/autoupdate/start.sh" "modules/jarupdate/start.sh" "modules/config/start.sh" "modules/logcleaner/start.sh" "autoupdate-files.txt"; do
+  for path in "start.sh" "start-modules.sh" "modules/autoupdate/start.sh" "modules/jarupdate/start.sh" "modules/config/start.sh" "modules/logcleaner/start.sh" "modules/cloudflared/start.sh" "autoupdate-files.txt"; do
     echo "[Install] GET ${path}"
     fetch_file "${path}" || return 1
   done
@@ -36,10 +62,11 @@ try_github_install() {
   return 0
 }
 
-echo "[Install] OpenRune Game Server"
+echo "[Install] ${OPENRUNE_BRAND:-OpenRune} Game Server"
 
 if try_github_install; then
   echo "[Install] Pulled scripts from ${RAW}"
+  install_cloudflared
   echo "[Install] done"
   exit 0
 fi
@@ -129,17 +156,22 @@ run_module() {
     fi
     header "Running module: ${name}"
     if ! bash "${script}"; then
+        # The tunnel only fronts the web client; the game itself is reachable without it.
+        if [[ "${name}" == "cloudflared" ]]; then
+            echo "[Orchestrator] Module 'cloudflared' failed — continuing without the tunnel."
+            return 0
+        fi
         echo "[Orchestrator] Module '${name}' failed — startup aborted."
         exit 1
     fi
 }
 
-MODULE_ORDER="${START_MODULES:-autoupdate jarupdate config logcleaner}"
+MODULE_ORDER="${START_MODULES:-autoupdate jarupdate config logcleaner cloudflared}"
 for module in ${MODULE_ORDER}; do
     run_module "${module}"
 done
 
-header "Starting OpenRune Game Server (Java)"
+header "Starting ${OPENRUNE_BRAND:-OpenRune} Game Server (Java)"
 __OPENRUNE_EMBED__
 chmod +x "start-modules.sh"
 
@@ -867,9 +899,11 @@ OPENRUNE_WORLD="${OPENRUNE_WORLD:-}"
 
 OPENRUNE_CENTRAL_WORLD_KEY="${OPENRUNE_CENTRAL_WORLD_KEY:-}"
 OPENRUNE_CENTRAL_DB_PASSWORD="${OPENRUNE_CENTRAL_DB_PASSWORD:-}"
+OPENRUNE_BRAND="${OPENRUNE_BRAND:-OpenRune}"
+
+GAME_NAME="${OPENRUNE_BRAND} Game Server"
 
 # Fixed values — not exposed in the panel
-GAME_NAME="OpenRune Game Server"
 GAME_PORT="43594"
 CENTRAL_SAME_INSTANCE="false"
 CENTRAL_HOST="central.openrune.example"
@@ -975,6 +1009,83 @@ echo "[Logcleaner] Done"
 __OPENRUNE_EMBED__
 chmod +x "modules/logcleaner/start.sh"
 
+mkdir -p "$(dirname "modules/cloudflared/start.sh")"
+cat >"modules/cloudflared/start.sh" <<'__OPENRUNE_EMBED__'
+#!/usr/bin/env bash
+# Cloudflare Tunnel module (token-based). Fronts the web client bridge with HTTPS.
+
+CLOUDFLARED_STATUS="${CLOUDFLARED_STATUS:-0}"
+CLOUDFLARED_TOKEN="${CLOUDFLARED_TOKEN:-}"
+CLOUDFLARED_LOG_FILE="${CLOUDFLARED_LOG_FILE:-/home/container/logs/cloudflared.log}"
+CLOUDFLARED_PID_FILE="${CLOUDFLARED_PID_FILE:-/home/container/tmp/cloudflared.pid}"
+CLOUDFLARED_MAX_ATTEMPTS="${CLOUDFLARED_MAX_ATTEMPTS:-130}"
+CLOUDFLARED_STATUS_TIMES="${CLOUDFLARED_STATUS_TIMES:-5 10 15 30 60 90 120}"
+
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+enabled() { [[ "${1}" =~ ^(true|1|yes|on)$ ]]; }
+
+if ! enabled "${CLOUDFLARED_STATUS}"; then
+    exit 0
+fi
+
+echo -e "${YELLOW}[Tunnel] Starting Cloudflared Tunnel${NC}"
+
+if [[ -z "${CLOUDFLARED_TOKEN}" ]]; then
+    echo -e "${RED}[Tunnel] CLOUDFLARED_TOKEN is not set; skipping Cloudflared startup.${NC}"
+    exit 0
+fi
+
+cf_bin="cloudflared"
+if [[ -x /home/container/cloudflared ]]; then
+    cf_bin="/home/container/cloudflared"
+elif ! command -v cloudflared >/dev/null 2>&1; then
+    echo -e "${RED}[Tunnel] cloudflared binary not found. Reinstall the server.${NC}"
+    exit 1
+fi
+
+mkdir -p "$(dirname "${CLOUDFLARED_LOG_FILE}")" "$(dirname "${CLOUDFLARED_PID_FILE}")"
+: >"${CLOUDFLARED_LOG_FILE}"
+
+"${cf_bin}" tunnel --no-autoupdate run --token "${CLOUDFLARED_TOKEN}" \
+    >"${CLOUDFLARED_LOG_FILE}" 2>&1 &
+
+pid=$!
+echo "${pid}" >"${CLOUDFLARED_PID_FILE}"
+
+read -ra TIMES <<< "${CLOUDFLARED_STATUS_TIMES}"
+echo -e "${YELLOW}[Tunnel] Waiting for Cloudflared to establish connection...${NC}"
+
+for ((i = 1; i <= CLOUDFLARED_MAX_ATTEMPTS; i++)); do
+    sleep 1
+    for t in "${TIMES[@]}"; do
+        if [[ $i -eq $t ]]; then
+            echo -e "${YELLOW}[Tunnel] Still waiting... (${i}s)${NC}"
+        fi
+    done
+
+    if ! kill -0 "${pid}" 2>/dev/null; then
+        echo -e "${RED}[Tunnel] Cloudflared process died; check logs: ${CLOUDFLARED_LOG_FILE}${NC}"
+        tail -n 10 "${CLOUDFLARED_LOG_FILE}" 2>/dev/null || true
+        exit 1
+    fi
+
+    if grep -qE 'Registered tunnel connection|Updated to new configuration' "${CLOUDFLARED_LOG_FILE}" 2>/dev/null; then
+        echo -e "${GREEN}[Tunnel] Connected after ${i}s${NC}"
+        echo -e "${GREEN}[Tunnel] Cloudflared is running successfully.${NC}"
+        exit 0
+    fi
+done
+
+echo -e "${RED}[Tunnel] No successful connection within ${CLOUDFLARED_MAX_ATTEMPTS}s; check ${CLOUDFLARED_LOG_FILE}${NC}"
+tail -n 10 "${CLOUDFLARED_LOG_FILE}" 2>/dev/null || true
+exit 1
+__OPENRUNE_EMBED__
+chmod +x "modules/cloudflared/start.sh"
+
 mkdir -p "$(dirname "autoupdate-files.txt")"
 cat >"autoupdate-files.txt" <<'__OPENRUNE_EMBED__'
 start.sh
@@ -984,15 +1095,17 @@ modules/config/start.sh
 modules/logcleaner/start.sh
 modules/autoupdate/start.sh
 modules/jarupdate/start.sh
+modules/cloudflared/start.sh
 autoupdate-files.txt
 __OPENRUNE_EMBED__
 
 cat >"install.sh" <<'__OPENRUNE_EMBED__'
 #!/bin/ash
 # Reinstall via Pterodactyl panel to refresh scripts from the egg or GitHub.
-echo "[Install] OpenRune Game Server — scripts from Mark7625/custom-pterodactyl-eggs @ openrune-game-server"
+echo "[Install] ${OPENRUNE_BRAND:-OpenRune} Game Server — scripts from Mark7625/custom-pterodactyl-eggs @ openrune-game-server"
 exit 0
 __OPENRUNE_EMBED__
 chmod +x "install.sh"
 
+install_cloudflared
 echo "[Install] done"

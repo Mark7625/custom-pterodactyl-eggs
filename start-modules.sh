@@ -43,14 +43,19 @@ run_module() {
     fi
     header "Running module: ${name}"
     if ! bash "${script}"; then
+        # The tunnel only fronts the web client; the game itself is reachable without it.
+        if [[ "${name}" == "cloudflared" ]]; then
+            echo "[Orchestrator] Module 'cloudflared' failed — continuing without the tunnel."
+            return 0
+        fi
         echo "[Orchestrator] Module '${name}' failed — startup aborted."
         exit 1
     fi
 }
 
-MODULE_ORDER="${START_MODULES:-autoupdate jarupdate config logcleaner}"
+MODULE_ORDER="${START_MODULES:-autoupdate jarupdate config logcleaner cloudflared}"
 for module in ${MODULE_ORDER}; do
     run_module "${module}"
 done
 
-header "Starting OpenRune Game Server (Java)"
+header "Starting ${OPENRUNE_BRAND:-OpenRune} Game Server (Java)"
