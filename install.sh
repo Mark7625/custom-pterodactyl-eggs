@@ -1039,11 +1039,40 @@ if [[ -z "${CLOUDFLARED_TOKEN}" ]]; then
     exit 0
 fi
 
-cf_bin="cloudflared"
+download_cloudflared() {
+    local arch cf
+    arch="$(uname -m)"
+    case "${arch}" in
+        x86_64|amd64) cf=amd64 ;;
+        aarch64|arm64) cf=arm64 ;;
+        *)
+            echo -e "${RED}[Tunnel] Unsupported architecture ${arch}; cannot fetch cloudflared.${NC}"
+            return 1
+            ;;
+    esac
+
+    echo -e "${YELLOW}[Tunnel] cloudflared not found; downloading (${cf})...${NC}"
+    if curl -fsSL --connect-timeout 15 --max-time 300 \
+        "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${cf}" \
+        -o /home/container/cloudflared.part; then
+        mv -f /home/container/cloudflared.part /home/container/cloudflared
+        chmod +x /home/container/cloudflared
+        echo -e "${GREEN}[Tunnel] cloudflared downloaded.${NC}"
+        return 0
+    fi
+
+    rm -f /home/container/cloudflared.part
+    echo -e "${RED}[Tunnel] Download failed; reinstall the server or upload the binary manually.${NC}"
+    return 1
+}
+
 if [[ -x /home/container/cloudflared ]]; then
     cf_bin="/home/container/cloudflared"
-elif ! command -v cloudflared >/dev/null 2>&1; then
-    echo -e "${RED}[Tunnel] cloudflared binary not found. Reinstall the server.${NC}"
+elif command -v cloudflared >/dev/null 2>&1; then
+    cf_bin="cloudflared"
+elif download_cloudflared; then
+    cf_bin="/home/container/cloudflared"
+else
     exit 1
 fi
 
